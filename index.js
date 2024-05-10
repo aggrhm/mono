@@ -5,10 +5,10 @@ const projectsCommand = require('./commands/projects')
 const meta = require('./package.json')
 
 exports.run = (cwd, argv) => {
-  console.log(`Running mono in ${cwd}.`)
-
   const program = new Command()
   Context.current = new Context(cwd)
+  Context.current.log(`Running mono in ${cwd}`, {style: 'muted'})
+
 
   program
     .name("mono")
