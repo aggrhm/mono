@@ -1,0 +1,14 @@
+{
+  "name": "mono",
+  "version": "1.0.0",
+  "bin": {
+    "mono": "./bin/mono"
+  },
+  "main": "index.js",
+  "author": "Alan Graham",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.0.0",
+    "yaml": "^2.4.2"
+  }
+}
