@@ -2,6 +2,7 @@ const { Command } = require('commander')
 
 const Context = require('./lib/context')
 const projectsCommand = require('./commands/projects')
+const filesCommand = require('./commands/files')
 const meta = require('./package.json')
 
 exports.run = (cwd, argv) => {
@@ -16,5 +17,7 @@ exports.run = (cwd, argv) => {
     .version(meta.version)
 
   program.addCommand(projectsCommand())
+  program.addCommand(filesCommand())
+
   program.parse(argv)
 }
