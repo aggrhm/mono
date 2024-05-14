@@ -8,46 +8,41 @@ function projectsCommand() {
     .command('check')
     .description('Check state of projects')
     .argument('[projects...]')
-    .action(check)
+    .action(buildRunner('check'))
   projects
     .command('install')
     .description('Install all projects to this monorepo')
     .argument('[projects...]')
-    .action(install)
+    .action(buildRunner('install'))
   projects
     .command('sync')
     .description('Checkout all projects to the appropriate ref/branch')
     .argument('[projects...]')
-    .action(sync)
+    .action(buildRunner('sync'))
+  projects
+    .command('run')
+    .description('Run script or command in all projects')
+    .argument('[projects...]')
+    .option('-s', '--script <script>', 'script to run')
+    .action(buildRunner('run'))
+  projects
+    .command('setup')
+    .description('Run setup script in all projects')
+    .argument('[projects...]')
+    .action(buildRunner('setup'))
 
   return projects
 }
 
-async function check(proj_names, options) {
-  await Context.current.runForProjects({
-    action: 'check',
-    only: proj_names,
-    options: options,
-    includeDependencies: true
-  })
-}
-
-async function install(proj_names, options) {
-  await Context.current.runForProjects({
-    action: 'install',
-    only: proj_names,
-    options: options,
-    includeDependencies: true
-  })
-}
-
-async function sync(proj_names, options) {
-  await Context.current.runForProjects({
-    action: 'sync',
-    only: proj_names,
-    options: options,
-    includeDependencies: true
-  })
+function buildRunner(action) {
+  return async function(proj_names, options) {
+    await Context.current.runForProjects({
+      action: action,
+      only: proj_names,
+      options: options,
+      includeDependencies: true
+    })
+  }
 }
 
 module.exports = projectsCommand
