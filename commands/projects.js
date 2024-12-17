@@ -30,6 +30,11 @@ function projectsCommand() {
     .description('Run setup script in all projects')
     .argument('[projects...]')
     .action(buildRunner('setup'))
+  projects
+    .command('uninstall')
+    .description('Uninstall projects in this monorepo')
+    .argument('[projects...]')
+    .action(buildRunner('uninstall'))
 
   return projects
 }
