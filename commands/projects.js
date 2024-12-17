@@ -35,6 +35,11 @@ function projectsCommand() {
     .description('Uninstall projects in this monorepo')
     .argument('[projects...]')
     .action(buildRunner('uninstall'))
+  projects
+    .command('reinstall')
+    .description('Reinstall projects in this monorepo')
+    .argument('[projects...]')
+    .action(buildRunner('reinstall'))
 
   return projects
 }
