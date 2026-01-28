@@ -1,7 +1,7 @@
-const { Command } = require('commander')
-const Context = require('../lib/context')
+import { Command } from 'commander'
+import Context from '../lib/context'
 
-function projectsCommand() {
+export default function projectsCommand() {
   const projects = new Command('projects')
   projects.argument('[projects...]')
   projects.option('-g, --group <groups...>', 'Filter projects by group')
@@ -40,11 +40,9 @@ function projectsCommand() {
   return projects
 }
 
-function buildRunner(action) {
-  return async function() {
-    const cmd = this;
-    await Context.current.runCommandForProjects(cmd)
+function buildRunner() {
+  return async function(this: Command) {
+    const cmd = this
+    await Context.current!.runCommandForProjects(cmd)
   }
 }
-
-module.exports = projectsCommand

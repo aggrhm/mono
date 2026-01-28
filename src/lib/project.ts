@@ -1,13 +1,37 @@
-const fs = require("fs")
-const path = require("path")
-const chalk = require("chalk")
+import fs from "fs"
+import path from "path"
+import chalk from "chalk"
 
-class Project {
-  constructor(context, conf) {
+import Context from './context'
+
+type ProjectConfig = {
+  key: string
+  name: string
+  path: string
+  repository: string
+  ref: string
+  groups: string[]
+}
+
+export default class Project {
+
+  context: Context
+  key : string
+  name : string
+  path : string
+  repository : string | undefined
+  groups : string[] | undefined
+  ref : string
+  dependencies : string[] | undefined
+
+  constructor(context : Context, config: ProjectConfig) {
     this.context = context
-    Object.assign(this, conf)
+    this.key = config.key
+    Object.assign(this, config)
+
     this.name ||= this.key
     this.path ||= "/"
+    this.ref ||= "main"
     if (!this.path.endsWith("/")) {
       this.path = this.path + "/"
     }
@@ -23,7 +47,7 @@ class Project {
     return path.dirname(this.installPath)
   }
   get repositoryURL() {
-    if (this.repository.includes("://")) {
+    if (this.repository?.includes("://")) {
       // full url already defined
       return this.repository
     }
@@ -40,7 +64,7 @@ class Project {
     return fs.existsSync(this.installPath)
   }
 
-  hasAnyGroups(groups) {
+  hasAnyGroups(groups : string[]) {
     return this.groups && this.groups.some(group => groups.includes(group))
   }
 
@@ -113,8 +137,8 @@ class Project {
   }
 
   async reinstall() {
-    await uninstall()
-    await install()
+    await this.uninstall()
+    await this.install()
   }
 
   async sync() {
@@ -133,20 +157,22 @@ class Project {
     ctx.log(`Ref: ${this.ref} checked out`, { style: "detail" })
   }
 
-  async run({ script }) {
+  async run(options : { script : string }) {
     const ctx = this.context
+    const script = options.script
+
+    const script_path = `${this.relativeInstallPath}/${script}`
+    ctx.log(`Running ${script_path} for ${this.name}`)
 
     if (!this.isInstalled()) {
       ctx.log("Not installed, skipping", { style: "detail" })
       return
     }
     // Ensure script present
-    const script_path = `${this.relativeInstallPath}/${script}`
     if (fs.existsSync(script_path)) {
-      ctx.log(`Running ${script_path} for ${this.name}`)
       await ctx.execIn(this.relativeInstallPath, `./${script}`)
     } else {
-      ctx.log(`Script ${script} not found for ${this.name}`)
+      ctx.log(`Script ${script} not found for ${this.name}`, { style: "detail" })
     }
   }
 
