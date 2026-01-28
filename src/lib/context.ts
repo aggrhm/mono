@@ -1,22 +1,34 @@
-const yaml = require("yaml")
-const fs = require("fs")
-const util = require("util")
+import yaml from 'yaml'
+import fs from 'fs'
+import util from 'util'
+import chalk from 'chalk'
+
+import Project from './project'
+import { Command } from 'commander'
+
 const exec = util.promisify(require("child_process").exec)
-const chalk = require("chalk")
-const { S3Client } = require("@aws-sdk/client-s3")
-const { SecretsManagerClient } = require("@aws-sdk/client-secrets-manager")
 
-const Project = require("./project")
-const File = require("./file")
+type ContextConfig = {
+  name: string
+  env_key_prefix: string
+  settings: Record<string, any>
+  projects: Record<string, any>
+  files: Record<string, any>
+}
 
-class Context {
-  constructor(cwd) {
+export default class Context {
+
+  static current : Context | undefined
+  rootPath: string
+  config: ContextConfig | undefined
+
+  constructor(cwd : string) {
     this.rootPath = cwd
     this.load()
   }
 
   get settings() {
-    return this.config.settings
+    return this.config?.settings
   }
 
   get hostType() {
@@ -34,10 +46,10 @@ class Context {
   }
 
   get envKeyPrefix() {
-    if (this.config.env_key_prefix) {
-      return this.config.env_key_prefix
+    if (this.config?.env_key_prefix) {
+      return this.config?.env_key_prefix
     } else {
-      return `${this.config.name.toUpperCase()}_`
+      return `${this.config?.name.toUpperCase()}_`
     }
   }
 
@@ -45,53 +57,40 @@ class Context {
     // load yaml file
     const path = this.rootPath + "/mono.yml"
     const contents = fs.readFileSync(path, "utf8")
-    this.config = yaml.parse(contents)
+    this.config = yaml.parse(contents) as ContextConfig
 
     // establish defaults
     this.config.settings ||= {}
-    this.config.projects ||= []
+    this.config.projects ||= {}
     this.config.files ||= []
     this.config.settings.git_protocol ||= 'https'
     return this.config
   }
 
-  getSetting(key) {
+  getSetting(key : string) {
     // check env var first
     const env_key = `MONO_${key.toUpperCase()}`
     if (process.env[env_key]) {
       return process.env[env_key]
     } else {
-      return this.config.settings[key]
+      return this.config?.settings[key]
     }
   }
 
   getProjects() {
-    return Object.entries(this.config.projects || []).map(([key, conf]) => {
+    return Object.entries(this.config?.projects || []).map(([key, conf]) => {
       return new Project(this, { ...conf, key: key })
     })
   }
 
-  getFiles() {
-    return Object.entries(this.config.files || []).map(([key, conf]) => {
-      return new File(this, { ...conf, key: key })
-    })
-  }
-
   getProjectsMap() {
-    return this.getProjects().reduce((memo, project) => {
-      memo[project.key] = project
+    return this.getProjects().reduce((memo : Record<string, Project>, project : Project) => {
+      memo[project.key!] = project
       return memo
     }, {})
   }
 
-  getFilesMap() {
-    return this.getFiles().reduce((memo, file) => {
-      memo[file.key] = file
-      return memo
-    }, {})
-  }
-
-  findProjects({ withNames, withGroups }) {
+  findProjects({ withNames, withGroups }: { withNames?: string[], withGroups?: string[] }) {
     // find all projects with either these names or groups
     const filteredProjects = this.getProjects().filter((p) => {
       if (withNames && withNames.includes(p.key)) {
@@ -105,10 +104,10 @@ class Context {
     return filteredProjects
   }
 
-  expandProjectDependencies(projects) {
+  expandProjectDependencies(projects : Project[]) {
     let projectMap = this.getProjectsMap()
-    function getDeps(keys) {
-      return keys.map((key) => {
+    function getDeps(keys : string[]) {
+      return keys.map( (key : string ) : any[] => {
         const deps = projectMap[key].dependencies || []
         //return [key].concat(getDeps(deps))
         return getDeps(deps).concat([key])
@@ -120,18 +119,11 @@ class Context {
     return Array.from(allKeys).map((key) => projectMap[key])
   }
 
-  findFiles({ withNames }) {
-    const filesMap = this.getFilesMap()
-    let files = withNames.map((key) => filesMap[key])
-    return files
-  }
-
-  async runCommandForProjects(cmd) {
+  async runCommandForProjects(cmd : Command) {
     // find projects that matter
-    // debugger;
-    const action = cmd.name()
-    const selectedNames = cmd.parent.opts().name
-    const selectedGroups = cmd.parent.opts().group
+    const action = cmd.name() as string
+    const selectedNames = cmd.parent!.opts().name as string[]
+    const selectedGroups = cmd.parent!.opts().group as string[]
     const selectedFlex = cmd.args
     const options = cmd.options
 
@@ -140,47 +132,29 @@ class Context {
       projects = this.findProjects({ withNames: selectedNames })
     } else if (selectedGroups) {
       projects = this.findProjects({ withGroups: selectedGroups })
-    } else if (selectedFlex) {
-      projects = this.findProjects({ withNames: selectedFlex, withGroups: selectedFlex})
+    } else if (selectedFlex.length > 0) {
+      projects = this.findProjects({ withNames: selectedFlex, withGroups: selectedFlex })
     } else {
       projects = this.getProjects()
     }
 
-    //debugger
     projects = this.expandProjectDependencies(projects)
 
     this.log(`Performing [${action}] for ${projects.length} project(s).`, { style: "info" })
     for (const project of projects) {
-      await project[action](options)
+      await (project as any)[action](options)
     }
   }
 
-  async runForFiles({ action, only, options }) {
-    const filtered = only != null && only.length > 0
-    let files = null
-    if (filtered) {
-      projects = this.findFiles({ withNames: only })
-    } else {
-      files = this.getFiles()
-    }
-
-    this.log(`Performing [${action}] for ${files.length} files(s).`, {
-      style: "info",
-    })
-    for (const file of files) {
-      await file[action](options)
-    }
-  }
-
-  async execIn(path, cmd, { suppressOutput, suppressErrors } = {}) {
+  async execIn(path: string, cmd: string, options: { suppressOutput?: boolean, suppressErrors?: boolean } = {}) {
     try {
       const fullCmd = `cd ${path} && ${cmd}`
       const promise = exec(fullCmd)
       const child = promise.child
-      if (!suppressOutput) {
+      if (!options.suppressOutput) {
         child.stdout.pipe(process.stdout)
       }
-      if (!suppressErrors) {
+      if (!options.suppressErrors) {
         child.stderr.pipe(process.stderr)
       }
       const { stdout, stderr } = await promise
@@ -189,8 +163,8 @@ class Context {
     }
   }
 
-  log(msg, { style } = {}) {
-    switch (style) {
+  log(msg : string, options: { style?: string } = {}) {
+    switch (options.style) {
       case "muted":
         msg = chalk.grey.bold(msg)
         break;
@@ -204,11 +178,11 @@ class Context {
     console.log(msg)
   }
 
-  envKey(key) {
+  envKey(key : string) {
     return `${this.envKeyPrefix}${key.toUpperCase()}`
   }
 
-  ensureGitIgnored(path) {
+  ensureGitIgnored(path : string) {
     // check if present
     const ignorePath = this.rootPath + "/.gitignore"
     const contents = fs.readFileSync(ignorePath)
@@ -219,32 +193,4 @@ class Context {
     return false
   }
 
-  getS3Client() {
-    const client = new S3Client(this.getAWSClientConfig())
-    return client
-  }
-
-  getAWSSMClient() {
-    const client = new SecretsManagerClient(this.getAWSClientConfig())
-    return client
-  }
-
-  getAWSClientConfig() {
-    const regionVar = this.envKey("AWS_REGION")
-    const keyVar = this.envKey("AWS_ACCESS_KEY_ID")
-    const secretVar = this.envKey("AWS_SECRET_ACCESS_KEY")
-    if (process.env[keyVar]) {
-      return {
-        region: process.env[regionVar],
-        credentials: {
-          accessKeyId: process.env[keyVar],
-          secretAccessKey: process.env[secretVar],
-        }
-      }
-    } else {
-      return {}
-    }
-  }
 }
-
-module.exports = Context

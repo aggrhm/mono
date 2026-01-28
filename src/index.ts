@@ -1,11 +1,10 @@
-const { Command } = require('commander')
+import { Command } from 'commander'
 
-const Context = require('./lib/context')
-const projectsCommand = require('./commands/projects')
-const filesCommand = require('./commands/files')
-const meta = require('./package.json')
+import Context from './lib/context'
+import projectsCommand from './commands/projects'
+import meta from '../package.json'
 
-exports.run = (cwd, argv) => {
+exports.run = (cwd : string, argv: string[]) => {
   const program = new Command()
   Context.current = new Context(cwd)
   Context.current.log(`Running mono in ${cwd}`, {style: 'muted'})
@@ -17,7 +16,6 @@ exports.run = (cwd, argv) => {
     .version(meta.version)
 
   program.addCommand(projectsCommand())
-  program.addCommand(filesCommand())
 
   program.parse(argv)
 }
