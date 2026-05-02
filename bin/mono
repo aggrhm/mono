@@ -5,4 +5,4 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-require('../dist/src/index.js').run(process.cwd(), process.argv);
+require('../dist/src/index.js').run( (process.env.INIT_CWD || process.cwd()), process.argv );
