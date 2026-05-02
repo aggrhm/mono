@@ -35,5 +35,6 @@ export default class Context {
     }): void;
     envKey(key: string): string;
     ensureGitIgnored(path: string): boolean;
+    expandPath(path: string): string;
 }
 export {};

@@ -127,8 +127,8 @@ class Context {
     }
     async execIn(path, cmd, options = {}) {
         try {
-            const fullCmd = `cd ${path} && ${cmd}`;
-            const promise = exec(fullCmd);
+            const fullPath = this.expandPath(path);
+            const promise = exec(cmd, { cwd: fullPath });
             const child = promise.child;
             if (!options.suppressOutput) {
                 child.stdout.pipe(process.stdout);
@@ -168,6 +168,14 @@ class Context {
             return true;
         }
         return false;
+    }
+    expandPath(path) {
+        if (path.startsWith("/")) {
+            return path;
+        }
+        else {
+            return (this.rootPath + "/" + path);
+        }
     }
 }
 exports.default = Context;
