@@ -161,8 +161,8 @@ export default class Project {
     const ctx = this.context
     const script = options.script
 
-    const script_path = `${this.relativeInstallPath}/${script}`
-    ctx.log(`Running ${script_path} for ${this.name}`)
+    const script_path = `${this.installPath}/${script}`
+    ctx.log(`Running ${script} for ${this.name}`)
 
     if (!this.isInstalled()) {
       ctx.log("Not installed, skipping", { style: "detail" })
