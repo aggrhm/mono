@@ -110,6 +110,7 @@ class Project {
     }
     async sync(options = {}) {
         const ctx = this.context;
+        console.log(`Syncing ${this.name}`);
         if (!this.isInstalled()) {
             ctx.log("Not installed, skipping", { style: "detail" });
             return;
@@ -127,10 +128,9 @@ class Project {
             }
         }
         // checkout ref
-        ctx.log(`Syncing ${this.name} to ${targetRef}`);
-        await ctx.execIn(this.relativeInstallPath, `git pull`);
+        await ctx.execIn(this.relativeInstallPath, `git pull`, { suppressOutput: true });
         ctx.log(`Up-to-date`, { style: "detail" });
-        await ctx.execIn(this.relativeInstallPath, `git checkout ${targetRef}`);
+        await ctx.execIn(this.relativeInstallPath, `git checkout ${targetRef}`, { suppressOutput: true });
         ctx.log(`Ref: ${targetRef} checked out`, { style: "detail" });
     }
     async hasRef(ref) {
