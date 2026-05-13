@@ -115,6 +115,8 @@ class Project {
             ctx.log("Not installed, skipping", { style: "detail" });
             return;
         }
+        // refresh remote refs first so hasRef and checkout see new branches
+        await ctx.execIn(this.relativeInstallPath, `git fetch --all --prune`, { suppressOutput: true });
         let targetRef = this.ref;
         if (options.matchCurrent) {
             const { stdout } = await ctx.execIn(ctx.rootPath, `git rev-parse --abbrev-ref HEAD`, { suppressOutput: true });
@@ -127,11 +129,28 @@ class Project {
                 ctx.log(`Host branch ${hostBranch} not found in project, using ${this.ref}`, { style: "detail" });
             }
         }
-        // checkout ref
-        await ctx.execIn(this.relativeInstallPath, `git pull`, { suppressOutput: true });
-        ctx.log(`Up-to-date`, { style: "detail" });
+        // bail on local changes
+        const { stdout: dirty } = await ctx.execIn(this.relativeInstallPath, `git status --porcelain`, { suppressOutput: true });
+        if (dirty.trim().length > 0) {
+            ctx.log(`Local changes present, skipping`, { style: "detail" });
+            return;
+        }
         await ctx.execIn(this.relativeInstallPath, `git checkout ${targetRef}`, { suppressOutput: true });
         ctx.log(`Ref: ${targetRef} checked out`, { style: "detail" });
+        let hasUpstream = true;
+        try {
+            await ctx.execIn(this.relativeInstallPath, `git rev-parse --abbrev-ref --symbolic-full-name @{u}`, { suppressOutput: true, suppressErrors: true });
+        }
+        catch {
+            hasUpstream = false;
+        }
+        if (hasUpstream) {
+            await ctx.execIn(this.relativeInstallPath, `git pull --ff-only`, { suppressOutput: true });
+            ctx.log(`Up-to-date`, { style: "detail" });
+        }
+        else {
+            ctx.log(`No upstream, skipping pull`, { style: "detail" });
+        }
     }
     async hasRef(ref) {
         const ctx = this.context;
