@@ -127,7 +127,13 @@ class Context {
     }
     async execIn(path, cmd, options = {}) {
         const fullPath = this.expandPath(path);
-        const promise = exec(cmd, { cwd: fullPath });
+        const promise = exec(cmd, {
+            cwd: fullPath,
+            env: {
+                ...process.env,
+                INIT_CWD: fullPath
+            }
+        });
         const child = promise.child;
         if (!options.suppressOutput) {
             child.stdout.pipe(process.stdout);
