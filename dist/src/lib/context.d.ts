@@ -29,7 +29,10 @@ export default class Context {
     execIn(path: string, cmd: string, options?: {
         suppressOutput?: boolean;
         suppressErrors?: boolean;
-    }): Promise<void>;
+    }): Promise<{
+        stdout: string;
+        stderr: string;
+    }>;
     log(msg: string, options?: {
         style?: string;
     }): void;

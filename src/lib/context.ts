@@ -125,7 +125,7 @@ export default class Context {
     const selectedNames = cmd.parent!.opts().name as string[]
     const selectedGroups = cmd.parent!.opts().group as string[]
     const selectedFlex = cmd.args
-    const options = cmd.options
+    const options = cmd.opts()
 
     let projects = []
     if (selectedNames) {
@@ -146,21 +146,18 @@ export default class Context {
     }
   }
 
-  async execIn(path: string, cmd: string, options: { suppressOutput?: boolean, suppressErrors?: boolean } = {}) {
-    try {
-      const fullPath = this.expandPath(path)
-      const promise = exec(cmd, {cwd: fullPath})
-      const child = promise.child
-      if (!options.suppressOutput) {
-        child.stdout.pipe(process.stdout)
-      }
-      if (!options.suppressErrors) {
-        child.stderr.pipe(process.stderr)
-      }
-      const { stdout, stderr } = await promise
-    } catch (e) {
-      throw e
+  async execIn(path: string, cmd: string, options: { suppressOutput?: boolean, suppressErrors?: boolean } = {}): Promise<{ stdout: string, stderr: string }> {
+    const fullPath = this.expandPath(path)
+    const promise = exec(cmd, { cwd: fullPath })
+    const child = promise.child
+    if (!options.suppressOutput) {
+      child.stdout.pipe(process.stdout)
     }
+    if (!options.suppressErrors) {
+      child.stderr.pipe(process.stderr)
+    }
+    const { stdout, stderr } = await promise
+    return { stdout: stdout.toString(), stderr: stderr.toString() }
   }
 
   log(msg : string, options: { style?: string } = {}) {

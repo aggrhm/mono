@@ -18,6 +18,7 @@ export default function projectsCommand() {
   projects
     .command('sync')
     .description('Checkout all projects to the appropriate ref/branch')
+    .option('--match-current', "If the host repo's current branch exists in a project, check that out instead of the configured ref")
     .action(buildRunner())
   projects
     .command('run')

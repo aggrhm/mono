@@ -141,20 +141,47 @@ export default class Project {
     await this.install()
   }
 
-  async sync() {
+  async sync(options : { matchCurrent? : boolean } = {}) {
     const ctx = this.context
 
     if (!this.isInstalled()) {
       ctx.log("Not installed, skipping", { style: "detail" })
       return
     }
+
+    let targetRef = this.ref
+    if (options.matchCurrent) {
+      const { stdout } = await ctx.execIn(ctx.rootPath, `git rev-parse --abbrev-ref HEAD`, { suppressOutput: true })
+      const hostBranch = stdout.trim()
+      if (hostBranch && hostBranch !== 'HEAD' && await this.hasRef(hostBranch)) {
+        targetRef = hostBranch
+        ctx.log(`Matching host branch: ${hostBranch}`, { style: "detail" })
+      } else if (hostBranch) {
+        ctx.log(`Host branch ${hostBranch} not found in project, using ${this.ref}`, { style: "detail" })
+      }
+    }
+
     // checkout ref
-    ctx.log(`Syncing ${this.name} to ${this.ref}`)
+    ctx.log(`Syncing ${this.name} to ${targetRef}`)
     await ctx.execIn(this.relativeInstallPath, `git pull`)
     ctx.log(`Up-to-date`, { style: "detail" })
 
-    await ctx.execIn(this.relativeInstallPath, `git checkout ${this.ref}`)
-    ctx.log(`Ref: ${this.ref} checked out`, { style: "detail" })
+    await ctx.execIn(this.relativeInstallPath, `git checkout ${targetRef}`)
+    ctx.log(`Ref: ${targetRef} checked out`, { style: "detail" })
+  }
+
+  private async hasRef(ref : string) : Promise<boolean> {
+    const ctx = this.context
+    try {
+      await ctx.execIn(this.relativeInstallPath, `git rev-parse --verify --quiet ${ref}`, { suppressOutput: true, suppressErrors: true })
+      return true
+    } catch {}
+    try {
+      const { stdout } = await ctx.execIn(this.relativeInstallPath, `git ls-remote --heads --tags origin ${ref}`, { suppressOutput: true, suppressErrors: true })
+      return stdout.trim().length > 0
+    } catch {
+      return false
+    }
   }
 
   async run(options : { script : string }) {

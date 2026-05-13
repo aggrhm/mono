@@ -105,7 +105,7 @@ class Context {
         const selectedNames = cmd.parent.opts().name;
         const selectedGroups = cmd.parent.opts().group;
         const selectedFlex = cmd.args;
-        const options = cmd.options;
+        const options = cmd.opts();
         let projects = [];
         if (selectedNames) {
             projects = this.findProjects({ withNames: selectedNames });
@@ -126,21 +126,17 @@ class Context {
         }
     }
     async execIn(path, cmd, options = {}) {
-        try {
-            const fullPath = this.expandPath(path);
-            const promise = exec(cmd, { cwd: fullPath });
-            const child = promise.child;
-            if (!options.suppressOutput) {
-                child.stdout.pipe(process.stdout);
-            }
-            if (!options.suppressErrors) {
-                child.stderr.pipe(process.stderr);
-            }
-            const { stdout, stderr } = await promise;
+        const fullPath = this.expandPath(path);
+        const promise = exec(cmd, { cwd: fullPath });
+        const child = promise.child;
+        if (!options.suppressOutput) {
+            child.stdout.pipe(process.stdout);
         }
-        catch (e) {
-            throw e;
+        if (!options.suppressErrors) {
+            child.stderr.pipe(process.stderr);
         }
+        const { stdout, stderr } = await promise;
+        return { stdout: stdout.toString(), stderr: stderr.toString() };
     }
     log(msg, options = {}) {
         switch (options.style) {

@@ -28,7 +28,10 @@ export default class Project {
     install(): Promise<void>;
     uninstall(): Promise<void>;
     reinstall(): Promise<void>;
-    sync(): Promise<void>;
+    sync(options?: {
+        matchCurrent?: boolean;
+    }): Promise<void>;
+    private hasRef;
     run(options: {
         script: string;
     }): Promise<void>;
